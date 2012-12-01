@@ -60,6 +60,8 @@ public class DirectoryServer {
         }
         @Override
         public void run(){
+
+
             byte[] data = new byte[128];
             DatagramPacket writePacket;
             try {
