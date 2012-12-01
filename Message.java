@@ -7,6 +7,20 @@ import java.io.ByteArrayOutputStream;
  */
 public class Message {
 
+    public static byte[] getMData(byte[] data){
+        byte[] mdata = new byte[8];
+        System.arraycopy(data,0,mdata,0,8);
+        return mdata;
+    }
+
+    public static String getData(byte[] data){
+        byte[] mdata = getMData(data);
+        int size = Integer.parseInt(new String(mdata).substring(5,6));
+        byte[] body = new byte[size];
+        System.arraycopy(data,8,body,0,size);
+        return new String(body);
+    }
+
     public static ByteArrayOutputStream[] mkPackets(String header, String body) {
         String msg = header + "\n" + body;
         byte[] msgBytes = msg.getBytes();

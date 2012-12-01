@@ -1,83 +1,75 @@
-import java.io.*;
+import java.io.IOException;
 import java.net.*;
-import java.util.*;
 
 /**
  * User: davor
  * Date: 28/11/12
  * Time: 1:47 PM
  */
-public class DirectoryServer extends Thread implements Runnable {
-
-    private static DatagramSocket serverSocket;
-    final static int port = 40020;
-    private static InetAddress host;
-    private static boolean running;
-    private static Object lock;
-    private static Hashtable<String, P2PFile> table;
+public class DirectoryServer {
+    public static final int port = 40020;
+    public volatile static DatagramSocket serverSocket;
+    public static InetAddress host;
 
     static {
         try {
             host = InetAddress.getLocalHost();
-            serverSocket = new DatagramSocket(port);
+            serverSocket = new DatagramSocket(port, host);
         } catch (UnknownHostException e) {
             e.printStackTrace();
-        } catch (IOException e) {
+        } catch (SocketException e) {
             e.printStackTrace();
         }
     }
 
-    public static void runDirectoryServer() throws IOException {
-        System.out.println("the server is running on computer: " + host.getHostName());
-        ByteArrayOutputStream msg = new ByteArrayOutputStream();
-        while (running) {
-            synchronized (lock) {
-                byte[] pkt = new byte[128];
-                do {
-                    DatagramPacket p = new DatagramPacket(pkt, pkt.length);
-                    serverSocket.receive(p);
-                    msg.write(pkt,1,pkt.length-1);
-                } while (pkt[0] == 1);
-                String message = new String(msg.toByteArray());
-                doMethod(message, ""/*TODO get the src ip*/);
+    public static void run() {
+        while (true) {
+            byte[] readData = new byte[128];
+            DatagramPacket pkt = new DatagramPacket(readData,readData.length);
+            synchronized (serverSocket) {
+                try {
+                    serverSocket.receive(pkt);
+                } catch (IOException e) {
+                    System.out.println("could not read from the socket");
+                    continue;
+                }
+                String sd = new String(pkt.getData());
+                SocketAddress sa = pkt.getSocketAddress();
+                Thread repley = new Thread(new ServerThread(sd,sa));
+                repley.run();
             }
         }
-        serverSocket.close();
     }
 
-    private static void doMethod(String message, String clientIP) throws UnknownHostException {
-        byte[] data = null;
-        String[] msg = message.split("\n");
-        String[] header = msg[0].split(" ");
-        String[] body = msg[1].split(" ");
+    private static class ServerThread implements Runnable{
+        private final String[] body;
+        private final String method;
+        private final String file;
+        private final int length;
+        private final SocketAddress remoteHost;
 
-        if (header[0].equals("INFORM")) {
-            System.out.println("GOT INFORM");
-            String files = "";
-            for (String s : table.keySet()) {
-                files += s + "\n";
+        public ServerThread(String message,SocketAddress remoteHost){
+            this.remoteHost = remoteHost;
+            String[] tmp = message.split("\n");
+            String[] header = tmp[0].split(" ");
+            this.method = header[0];
+            this.file = header[1];
+            this.length = Integer.parseInt(header[2]);
+            this.body = new String[tmp.length-1];
+            System.arraycopy(tmp,1,body,0,body.length);
+        }
+        @Override
+        public void run(){
+            byte[] data = new byte[128];
+            DatagramPacket writePacket;
+            try {
+                writePacket = new DatagramPacket(data,data.length,remoteHost);
+            } catch (SocketException e) {
+                e.printStackTrace();
             }
-            ByteArrayOutputStream[] bos = Message.mkPackets("0.0 200 OK", files);
-            for (ByteArrayOutputStream b : bos) {
-                DatagramPacket pk = new DatagramPacket(b.toByteArray(), 128, InetAddress.getByName(clientIP), 40020);
-                try {
-                    serverSocket.send(pk);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            for(String s : body){
+                System.out.println(s);
             }
-        } else if (header[0].equals("DOWNLOAD")) {
-            System.out.println("GOT DOWNLOAD");
-        } else if (header[0].equals("RATE")) {
-            System.out.println("GOT RATE");
-            P2PFile f = table.get(header[1]);
-            double r = Double.parseDouble(header[2]);
-            f.rate(r);
-        } else if (header[0].equals("EXIT")) {
-            running = false;
-            System.out.println("GOT EXIT");
-        } else {
-            System.out.println("Did not understand message: " + header[0]);
         }
     }
 }
