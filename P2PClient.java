@@ -1,10 +1,7 @@
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.util.Scanner;
 
 /**
@@ -31,7 +28,10 @@ public class P2PClient {
         path = "P2PFiles/";
         try {
             host = InetAddress.getByName(strHost);
+            datagramSocket = new DatagramSocket();
         } catch (UnknownHostException e) {
+            e.printStackTrace();
+        } catch (SocketException e) {
             e.printStackTrace();
         }
     }
@@ -104,8 +104,13 @@ public class P2PClient {
             if(running)
                 try {
                     sendMessage(msg);
-                    //String inMsg = readMessage();
-                    //System.out.println(inMsg);
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    String inMsg = readMessage();
+                    printAck(inMsg);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -114,22 +119,28 @@ public class P2PClient {
         datagramSocket.close();
     }
 
+    private void printAck(String inMsg) {
+
+    }
+
     private String readMessage() throws IOException {
         byte[] data = new byte[128];
         byte[] inData = null;
         DatagramPacket pkt = new DatagramPacket(data,data.length);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        do{
+        int x=0;
+        do {
+            System.out.println(x++);
             datagramSocket.receive(pkt);
+            System.out.println("got this far");
             inData = pkt.getData();
             baos.write(inData,1,inData.length-1);
         }while (inData[0] != 1);
+        System.out.println("finished reading");
         return new String(baos.toByteArray());
     }
 
     private void sendMessage(String msg) throws IOException {
-        if(datagramSocket == null)
-            datagramSocket = new DatagramSocket();
         byte[] data = new byte[128];
         byte[] msgData = msg.getBytes();
         DatagramPacket pkt = new DatagramPacket(data,data.length,host,Port.port);

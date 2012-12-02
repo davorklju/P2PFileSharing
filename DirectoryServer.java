@@ -52,7 +52,7 @@ public class DirectoryServer {
                 data = new byte[128];
                 pkt = new DatagramPacket(data,data.length);
                 message = getPacket(pkt,data);
-                ServerThread st = new ServerThread(message,pkt.getAddress());
+                ServerThread st = new ServerThread(message,pkt.getAddress(),pkt.getPort());
                 Thread thread = new Thread(st);
                 thread.run();
             } catch (IOException e) {
@@ -66,9 +66,11 @@ public class DirectoryServer {
         private final String method;
         private final String file;
         private final int length;
+        private final int port;
         private final InetAddress remoteHost;
 
-        public ServerThread(String message,InetAddress remoteHost){
+        public ServerThread(String message,InetAddress remoteHost, int port){
+            this.port = port;
             this.remoteHost = remoteHost;
             String[] tmp = message.split("\n");
             String[] header = tmp[0].split(" ");
@@ -98,18 +100,18 @@ public class DirectoryServer {
         private void sendMessage(String msg) throws IOException {
             byte[] data = new byte[128];
             byte[] msgData = msg.getBytes();
-            DatagramPacket pkt = new DatagramPacket(data,data.length,remoteHost,Port.port);
+
+            DatagramPacket pkt = new DatagramPacket(data,data.length,remoteHost,port);
+
             int x = 0;
-            for(int i=msgData.length+200,len;i<msgData.length;i+=len){
+            for(int i=0,len;i<msgData.length;i+=len){
                 System.out.println(x++);
-                System.out.println("AAA");
                 len = msgData.length - i > 127 ? 127 : msgData.length - i;
-                System.out.println("BBB");
                 data[0] = (byte) (i + len >= msgData.length ? 1 : 0);
-                System.out.println("CCC");
                 System.arraycopy(msgData,i,data,1,len);
                 serverSocket.send(pkt);
             }
+            System.out.println("finished sending");
         }
 
         private void query() {
@@ -121,6 +123,7 @@ public class DirectoryServer {
             String msg = "";
             if(table.contains(key)){
                msg += "1.0 200 OK\n";
+               msg += "content-length " + 0 + "\n";
             }
             else{
                 msg += "1.0 400 ERROR\n";
@@ -139,6 +142,7 @@ public class DirectoryServer {
             if(table.contains(key)){
                 P2PFile f = (P2PFile)table.get(key);
                 msg += "1.0 200 OK\n";
+                msg += "content-length " + 0 + "\n";
             }
             else{
                 msg += "1.0 400 ERROR\n";
@@ -158,6 +162,7 @@ public class DirectoryServer {
             if(!table.contains(key)){
                 table.put(key,new P2PFile(file,remoteHost.getHostName()));
                 msg += "1.0 200 OK\n";
+                msg += "content-length " + 0 + "\n";
             }
             else {
                 msg += "1.0 201 ALREADY_HAVE\n";
