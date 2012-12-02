@@ -84,6 +84,7 @@ public class P2PClient {
     public void run() {
         boolean running = true;
         while (running) {
+            String inMsg;
             String msg = "";
             switch (getMessage()) {
                 case 1:
@@ -92,7 +93,6 @@ public class P2PClient {
                     break;
                 case 2:
                     msg += "QUERY #LIST# 0\n";
-                    String inMsg;
                     try {
                         sendMessage(msg);
                         inMsg = readMessage();
@@ -105,8 +105,17 @@ public class P2PClient {
                     }
                     break;
                 case 3:
-                    msg += "RATE ";
-                    msg += getFileRating();
+                    msg += "QUERY #LIST# 0\n";
+                    try {
+                        sendMessage(msg);
+                        inMsg = readMessage();
+                        printAck(inMsg);
+                        msg += "RATE ";
+                        msg += getFileRating();
+                        System.out.println(msg);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     break;
                 case 4:
                     running = false;
@@ -120,7 +129,7 @@ public class P2PClient {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    String inMsg = readMessage();
+                    inMsg = readMessage();
                     printAck(inMsg);
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -136,7 +145,8 @@ public class P2PClient {
         if (stat[1].equals("200")) {
             String[] header = msg[1].split(" ");
             int len = Integer.parseInt(header[1]);
-            System.out.println("the content-length is " + len);
+            if(len == 0)
+                System.out.print("200 OK");
             String files = msg[2].substring(0,len).replaceAll(" ","\n");
             System.out.println(files);
         } else {

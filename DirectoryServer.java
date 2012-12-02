@@ -135,7 +135,7 @@ public class DirectoryServer {
             System.out.println(method + " " + file + " " + length);
             String key = file;
             String msg = "";
-            if (table.contains(key)) {
+            if (table.containsKey(key)) {
                 msg += "1.0 200 OK\n";
                 msg += "content-length " + 0 + "\n";
                 for(String s : table.keySet())
