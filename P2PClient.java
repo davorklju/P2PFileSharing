@@ -1,7 +1,10 @@
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Scanner;
 
 /**
@@ -101,8 +104,8 @@ public class P2PClient {
             if(running)
                 try {
                     sendMessage(msg);
-                    String inMsg = readMessage();
-                    System.out.println(inMsg);
+                    //String inMsg = readMessage();
+                    //System.out.println(inMsg);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

@@ -22,7 +22,7 @@ public class DirectoryServer {
         try {
             host = InetAddress.getLocalHost();
             System.out.println(host.getHostName());
-            serverSocket = new DatagramSocket(port, host);
+            serverSocket = new DatagramSocket(Port.port);
             table = new Hashtable<String, P2PFile>();
         } catch (UnknownHostException e) {
             e.printStackTrace();
@@ -39,7 +39,6 @@ public class DirectoryServer {
             inData = pkt.getData();
             msg.write(inData, 1, inData.length-1);
         }while (inData[0] != 1);
-        System.out.println("Got this far C");
         return new String(msg.toByteArray());
     }
 
@@ -100,9 +99,14 @@ public class DirectoryServer {
             byte[] data = new byte[128];
             byte[] msgData = msg.getBytes();
             DatagramPacket pkt = new DatagramPacket(data,data.length,remoteHost,Port.port);
-            for(int i=0,len;i<msgData.length;i+=len){
+            int x = 0;
+            for(int i=msgData.length+200,len;i<msgData.length;i+=len){
+                System.out.println(x++);
+                System.out.println("AAA");
                 len = msgData.length - i > 127 ? 127 : msgData.length - i;
+                System.out.println("BBB");
                 data[0] = (byte) (i + len >= msgData.length ? 1 : 0);
+                System.out.println("CCC");
                 System.arraycopy(msgData,i,data,1,len);
                 serverSocket.send(pkt);
             }
