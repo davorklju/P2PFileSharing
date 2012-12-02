@@ -1,3 +1,4 @@
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.*;
@@ -12,6 +13,8 @@ public class P2PClient {
     private final int port;
     private InetAddress host;
     private volatile DatagramSocket datagramSocket;
+    private String path;
+
 
     public static void main(String[] args) {
         P2PClient p = new P2PClient();
@@ -22,6 +25,7 @@ public class P2PClient {
         port = Port.port;
         Scanner in = new Scanner(System.in);
         String strHost = in.nextLine();
+        path = "P2PFiles/";
         try {
             host = InetAddress.getByName(strHost);
         } catch (UnknownHostException e) {
@@ -44,13 +48,11 @@ public class P2PClient {
         Scanner in = new Scanner(System.in);
         System.out.println("Enter the name of file you wish to upload");
         String fileName = in.nextLine();
-        File f = new File(fileName);
+        File f = new File(path+fileName);
+        if(!f.exists())
+            System.out.println("cant find file" + f.getAbsolutePath());
         long size = f.length();
         String msg = fileName + " " + size + "\n";
-        Scanner inFile = new Scanner(fileName);
-        while (inFile.hasNextLine())
-            msg += inFile.nextLine();
-        msg += "\n";
         return msg;
     }
 
@@ -99,6 +101,8 @@ public class P2PClient {
             if(running)
                 try {
                     sendMessage(msg);
+                    String inMsg = readMessage();
+                    System.out.println(inMsg);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -107,15 +111,26 @@ public class P2PClient {
         datagramSocket.close();
     }
 
+    private String readMessage() throws IOException {
+        byte[] data = new byte[128];
+        byte[] inData = null;
+        DatagramPacket pkt = new DatagramPacket(data,data.length);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        do{
+            datagramSocket.receive(pkt);
+            inData = pkt.getData();
+            baos.write(inData,1,inData.length-1);
+        }while (inData[0] != 1);
+        return new String(baos.toByteArray());
+    }
+
     private void sendMessage(String msg) throws IOException {
         if(datagramSocket == null)
             datagramSocket = new DatagramSocket();
         byte[] data = new byte[128];
         byte[] msgData = msg.getBytes();
         DatagramPacket pkt = new DatagramPacket(data,data.length,host,Port.port);
-        int x = 0;
         for(int i=0,len;i<msgData.length;i+=len){
-            System.out.println(x++);
             len = msgData.length - i > 127 ? 127 : msgData.length - i;
             data[0] = (byte) (i + len >= msgData.length ? 1 : 0);
             System.arraycopy(msgData,i,data,1,len);

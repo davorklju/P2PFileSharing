@@ -23,6 +23,7 @@ public class DirectoryServer {
             host = InetAddress.getLocalHost();
             System.out.println(host.getHostName());
             serverSocket = new DatagramSocket(port, host);
+            table = new Hashtable<String, P2PFile>();
         } catch (UnknownHostException e) {
             e.printStackTrace();
         } catch (SocketException e) {
@@ -51,14 +52,10 @@ public class DirectoryServer {
             try {
                 data = new byte[128];
                 pkt = new DatagramPacket(data,data.length);
-                System.out.println("Got this far 1");
                 message = getPacket(pkt,data);
-                System.out.println("Got this far before PKT");
                 ServerThread st = new ServerThread(message,pkt.getAddress());
-                System.out.println("Got this far after PKT");
                 Thread thread = new Thread(st);
                 thread.run();
-                System.out.println("Got this far 2");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -99,18 +96,73 @@ public class DirectoryServer {
             }
         }
 
-        private void rate() {
-            System.out.println("got Rate");
+        private void sendMessage(String msg) throws IOException {
+            byte[] data = new byte[128];
+            byte[] msgData = msg.getBytes();
+            DatagramPacket pkt = new DatagramPacket(data,data.length,remoteHost,Port.port);
+            for(int i=0,len;i<msgData.length;i+=len){
+                len = msgData.length - i > 127 ? 127 : msgData.length - i;
+                data[0] = (byte) (i + len >= msgData.length ? 1 : 0);
+                System.arraycopy(msgData,i,data,1,len);
+                serverSocket.send(pkt);
+            }
         }
 
         private void query() {
             System.out.println("got QUERY");
             System.out.println(method+" "+file+"@"+remoteHost.getHostName()+" "+length);
+            String key = file + "@" + remoteHost.getHostName();
+            for(String s : table.keySet())
+                System.out.println(s);
+            String msg = "";
+            if(table.contains(key)){
+               msg += "1.0 200 OK\n";
+            }
+            else{
+                msg += "1.0 400 ERROR\n";
+            }
+            try {
+                sendMessage(msg);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void rate() {
+            System.out.println("got Rate");
+            String key = file + "@" + remoteHost.getHostName();
+            String msg = "";
+            if(table.contains(key)){
+                P2PFile f = (P2PFile)table.get(key);
+                msg += "1.0 200 OK\n";
+            }
+            else{
+                msg += "1.0 400 ERROR\n";
+            }
+            try {
+                sendMessage(msg);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         private void informAndUpdate(){
             System.out.println("got INFORM");
             System.out.println(method + " " + file + " " + length);
+            String key = file + "@" + remoteHost.getHostName();
+            String msg = "";
+            if(!table.contains(key)){
+                table.put(key,new P2PFile(file,remoteHost.getHostName()));
+                msg += "1.0 200 OK\n";
+            }
+            else {
+                msg += "1.0 201 ALREADY_HAVE\n";
+            }
+            try {
+                sendMessage(msg);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
