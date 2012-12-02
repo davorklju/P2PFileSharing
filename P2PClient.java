@@ -23,6 +23,7 @@ public class P2PClient {
 
     public P2PClient() {
         port = Port.port;
+        System.out.println("enter the name of the server");
         Scanner in = new Scanner(System.in);
         String strHost = in.nextLine();
         path = "P2PFiles/";
@@ -51,8 +52,8 @@ public class P2PClient {
         Scanner in = new Scanner(System.in);
         System.out.println("Enter the name of file you wish to upload");
         String fileName = in.nextLine();
-        File f = new File(path+fileName);
-        if(!f.exists())
+        File f = new File(path + fileName);
+        if (!f.exists())
             System.out.println("cant find file" + f.getAbsolutePath());
         long size = f.length();
         String msg = fileName + " " + size + "\n";
@@ -90,8 +91,18 @@ public class P2PClient {
                     msg += getFileForUpload();
                     break;
                 case 2:
-                    msg += "QUERY ";
-                    msg += getFileForQuery();
+                    msg += "QUERY #LIST# 0\n";
+                    String inMsg;
+                    try {
+                        sendMessage(msg);
+                        inMsg = readMessage();
+                        printAck(inMsg);
+                        msg = "QUERY ";
+                        msg += getFileForQuery();
+                        System.out.println(msg);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     break;
                 case 3:
                     msg += "RATE ";
@@ -101,7 +112,7 @@ public class P2PClient {
                     running = false;
                     break;
             }
-            if(running)
+            if (running)
                 try {
                     sendMessage(msg);
                     try {
@@ -120,22 +131,32 @@ public class P2PClient {
     }
 
     private void printAck(String inMsg) {
-
+        String[] msg = inMsg.split("\n");
+        String[] stat = msg[0].split(" ");
+        if (stat[1].equals("200")) {
+            String[] header = msg[1].split(" ");
+            int len = Integer.parseInt(header[1]);
+            System.out.println("the content-length is " + len);
+            String files = msg[2].substring(0,len).replaceAll(" ","\n");
+            System.out.println(files);
+        } else {
+            System.out.println(msg[0]);
+        }
     }
 
     private String readMessage() throws IOException {
         byte[] data = new byte[128];
         byte[] inData = null;
-        DatagramPacket pkt = new DatagramPacket(data,data.length);
+        DatagramPacket pkt = new DatagramPacket(data, data.length);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        int x=0;
+        int x = 0;
         do {
             System.out.println(x++);
             datagramSocket.receive(pkt);
             System.out.println("got this far");
             inData = pkt.getData();
-            baos.write(inData,1,inData.length-1);
-        }while (inData[0] != 1);
+            baos.write(inData, 1, inData.length - 1);
+        } while (inData[0] != 1);
         System.out.println("finished reading");
         return new String(baos.toByteArray());
     }
@@ -143,11 +164,11 @@ public class P2PClient {
     private void sendMessage(String msg) throws IOException {
         byte[] data = new byte[128];
         byte[] msgData = msg.getBytes();
-        DatagramPacket pkt = new DatagramPacket(data,data.length,host,Port.port);
-        for(int i=0,len;i<msgData.length;i+=len){
+        DatagramPacket pkt = new DatagramPacket(data, data.length, host, Port.port);
+        for (int i = 0, len; i < msgData.length; i += len) {
             len = msgData.length - i > 127 ? 127 : msgData.length - i;
             data[0] = (byte) (i + len >= msgData.length ? 1 : 0);
-            System.arraycopy(msgData,i,data,1,len);
+            System.arraycopy(msgData, i, data, 1, len);
             datagramSocket.send(pkt);
         }
     }
