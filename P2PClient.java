@@ -288,7 +288,7 @@ public class P2PClient {
 
         public void mkFile(InputStream inputStream) {
 
-            File f = new File("/home/davor/Desktop/P2PFiles/"+file);
+            File f = new File(path+file);
             if(!f.exists())
                 try {
                     f.createNewFile();
