@@ -29,7 +29,9 @@ public class P2PClient {
         try {
             host = InetAddress.getByName(strHost);
             datagramSocket = new DatagramSocket();
-            serverSocket = new ServerSocket(Port.port+1);
+            serverSocket = new ServerSocket(Port.port + 1);
+            Thread t = new Thread(new ServerThread());
+            t.start();
         } catch (UnknownHostException e) {
             e.printStackTrace();
         } catch (SocketException e) {
@@ -84,6 +86,7 @@ public class P2PClient {
     }
 
     public void run() {
+        boolean download = false;
         running = true;
         while (running) {
             String inMsg;
@@ -101,6 +104,7 @@ public class P2PClient {
                         printAck(inMsg);
                         msg = "QUERY ";
                         msg += getFileForQuery();
+                        download = true;
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -120,7 +124,9 @@ public class P2PClient {
                 case 4:
                     running = false;
                     break;
-                default:System.out.println("select a correct input"); continue;
+                default:
+                    System.out.println("select a correct input");
+                    continue;
             }
             if (running)
                 try {
@@ -132,7 +138,9 @@ public class P2PClient {
                     }
                     inMsg = readMessage();
                     printAck(inMsg);
-                    startDownload(msg,inMsg);
+                    if (download)
+                        startDownload(msg, inMsg);
+                    download = false;
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -142,11 +150,11 @@ public class P2PClient {
     }
 
     private void startDownload(String msg, String inMsg) {
-        if(msg.startsWith("QUERY") && inMsg.startsWith("1.0 200")){
-            String file = msg.split(" ")[1];
-            ClientThread ct = new ClientThread(file);
-            Thread t = new Thread(ct);
-            t.run();
+        String file = msg.split("\n")[0].split(" ")[1];
+        boolean ok = inMsg.split("\n")[0].split(" ")[1].equals("200");
+        if (ok) {
+            Thread t = new Thread(new ClientThread(file));
+            t.start();
         }
     }
 
@@ -156,9 +164,9 @@ public class P2PClient {
         if (stat[1].equals("200")) {
             String[] header = msg[1].split(" ");
             int len = Integer.parseInt(header[1]);
-            if(len == 0)
+            if (len == 0)
                 System.out.print("200 OK");
-            String files = msg[2].substring(0,len).replaceAll(" ","\n");
+            String files = msg[2].substring(0, len).replaceAll(" ", "\n");
             System.out.println(files);
         } else {
             System.out.println(msg[0]);
@@ -174,7 +182,6 @@ public class P2PClient {
         do {
             System.out.println(x++);
             datagramSocket.receive(pkt);
-            System.out.println("got this far");
             inData = pkt.getData();
             baos.write(inData, 1, inData.length - 1);
         } while (inData[0] != 1);
@@ -194,21 +201,59 @@ public class P2PClient {
         }
     }
 
-    private class ServerThread implements Runnable{
+    private class ServerThread implements Runnable {
+
+        private void mkMessage(String file, OutputStream outputStream) {
+            System.out.println(path + file);
+            File f = new File(path + file);
+            /*
+            DataInputStream in = new DataInputStream(new FileInputStream(f));
+
+            int inData;
+            while((inData = in.read()) != -1)
+                out.write(inData);
+
+            out.write(-1);
+            */
+
+            FileInputStream fis;
+            OutputStream out;
+
+            try {
+                byte[] data = new byte[1024];
+                fis = new FileInputStream(f);
+                out = outputStream;
+                int count;
+                while ((count = fis.read(data)) >= 0) {
+                    out.write(data, 0, count);
+                }
+                out.flush();
+                fis.close();
+                out.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         @Override
         public void run() {
-            while(P2PClient.this.running){
+            while (P2PClient.this.running) {
                 Socket tmp;
-                BufferedReader in = null;
                 DataOutputStream out = null;
+                BufferedReader in = null;
                 try {
                     tmp = serverSocket.accept();
+
                     in = new BufferedReader(new InputStreamReader(tmp.getInputStream()));
                     out = new DataOutputStream(tmp.getOutputStream());
 
-                    String inMsg = in.readLine();
-                    String outMsg = mkMessage(inMsg);
+                    String file = in.readLine().split(" ")[1];
+                    mkMessage(file, tmp.getOutputStream());
+                    tmp.close();
+
+                    System.out.println("finished writing");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -217,60 +262,85 @@ public class P2PClient {
         }
     }
 
-    private String mkMessage(String inMsg) {
-        String[] stat = inMsg.split(" ");
-        String file = path + stat[1];
-        Scanner in = new Scanner(file);
-        String msg = "";
-        while (in.hasNextLine()){
-            msg += "msg" + "#lb#";
-        }
-        return "post " + path + " 0\n" + msg + "\n";
-    }
-
-    private class ClientThread implements Runnable{
+    private class ClientThread implements Runnable {
         private String file;
         private InetAddress host;
+
         public ClientThread(String file) {
+            System.out.println("got to thread");
             try {
                 String[] fh = file.split("@");
                 this.file = fh[0];
-                this.host = InetAddress.getByName(fh[1]);
+                System.out.println("the file i want to download is " + file);
+                host = InetAddress.getByName(fh[1]);
+                System.out.println("the host i want to download from is " + host.getHostName());
             } catch (UnknownHostException e) {
                 e.printStackTrace();
             }
         }
 
         @Override
-        public void run(){
+        public void run() {
             boolean running = true;
             Socket socket = null;
             DataOutputStream out = null;
             BufferedReader in = null;
             try {
-                socket = new Socket(host,Port.port+1);
+                socket = new Socket(host, Port.port + 1);
                 out = new DataOutputStream(socket.getOutputStream());
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-                out.writeChars("GET " + file + " 0\n");
-                String file = in.readLine();
+                out.writeBytes("GET " + file + " 0\n");
+                out.flush();
+                String input = in.readLine();
 
+                mkFile(input, socket.getInputStream());
+
+                System.out.println("finished reading");
+
+                socket.close();
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
 
-        public void mkFile(String msg) throws IOException {
+        public void mkFile(String msg, InputStream inputStream) {
             String[] message = msg.split("\n");
             String[] stat = message[0].split(" ");
-            File f = new File(stat[1]);
-            if(!f.exists())
-                f.createNewFile();
-            PrintWriter out = new PrintWriter(f);
-            for(String s : message[1].split("#lb#")){
-                out.println(s);
+            InputStream in = null;
+            FileOutputStream out = null;
+            byte[] data = new byte[1024];
+            File f = new File("/home/davor/Desktop/P2PFiles/thor.jpg");
+
+            try {
+
+                if (!f.exists()) {
+                    f.createNewFile();
+                }
+
+                in = inputStream;
+                out = new FileOutputStream(f);
+                int count;
+                while ((count = in.read(data)) >= 0) {
+                    out.write(data);
+                }
+
+                in.close();
+                out.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
+            /*
+            int inData;
+            while((inData = in.read()) != -1){
+                System.out.println(inData);
+                out.write(inData);
+            }
+            System.out.println("stat = " + stat[1]);
+            */
         }
     }
 }
