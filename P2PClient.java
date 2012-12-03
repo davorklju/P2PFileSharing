@@ -115,7 +115,7 @@ public class P2PClient {
                         sendMessage(msg);
                         inMsg = readMessage();
                         printAck(inMsg);
-                        msg += "RATE ";
+                        msg = "RATE ";
                         msg += getFileRating();
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -131,11 +131,6 @@ public class P2PClient {
             if (running)
                 try {
                     sendMessage(msg);
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
                     inMsg = readMessage();
                     printAck(inMsg);
                     if (download)
@@ -166,7 +161,7 @@ public class P2PClient {
             int len = Integer.parseInt(header[1]);
             if (len == 0)
                 System.out.print("200 OK");
-            String files = msg[2].substring(0, len).replaceAll(" ", "\n");
+            String files = msg[2];
             System.out.println(files);
         } else {
             System.out.println(msg[0]);
@@ -288,7 +283,8 @@ public class P2PClient {
 
         public void mkFile(InputStream inputStream) {
 
-            File f = new File(path+file);
+            File f = new File(path+"new_"+file);
+            System.out.println(f.getAbsolutePath());
             if(!f.exists())
                 try {
                     f.createNewFile();

@@ -152,12 +152,14 @@ public class DirectoryServer {
 
         private void rate() {
             System.out.println("got Rate");
-            String key = file + "@" + remoteHost.getHostName();
+            String key = file;
             String msg = "";
-            if (table.contains(key)) {
+            if (table.containsKey(key)) {
                 P2PFile f = (P2PFile) table.get(key);
+                String rating = f.rate(2)+"";
                 msg += "1.0 200 OK\n";
-                msg += "content-length " + 0 + "\n";
+                msg += "content-length " + rating.length() + "\n" + rating + "\n";
+                System.out.println("The rating is message is: " + msg);
             } else {
                 msg += "1.0 400 ERROR\n";
             }
