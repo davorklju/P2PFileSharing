@@ -10,7 +10,7 @@ public class P2PFile {
     private final String host;
 
     public P2PFile(String name,String host) {
-        rating = 0;
+        rating = 2.5;
         this.name = name;
         this.host = host;
     }

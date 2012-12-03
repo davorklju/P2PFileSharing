@@ -57,8 +57,10 @@ public class P2PClient {
         System.out.println("Enter the name of file you wish to upload");
         String fileName = in.nextLine();
         File f = new File(path + fileName);
-        if (!f.exists())
+        if (!f.exists()){
             System.out.println("cant find file" + f.getAbsolutePath());
+            return "FAIL";
+        }
         long size = f.length();
         String msg = fileName + " " + size + "\n";
         return msg;
@@ -94,7 +96,12 @@ public class P2PClient {
             switch (getMessage()) {
                 case 1:
                     msg += "INFORM ";
-                    msg += getFileForUpload();
+                    String tmp = getFileForUpload();
+                    if(tmp.equals("FAIL")){
+                        System.out.println("could not find file");
+                        continue;
+                    }
+                    msg += tmp;
                     break;
                 case 2:
                     msg += "QUERY #LIST# 0\n";
@@ -142,6 +149,7 @@ public class P2PClient {
         }
         System.out.println("finished");
         datagramSocket.close();
+        System.exit(0);
     }
 
     private void startDownload(String msg, String inMsg) {
@@ -249,7 +257,7 @@ public class P2PClient {
                 String[] fh = file.split("@");
                 this.file = fh[0];
                 System.out.println("the file i want to download is " + file);
-                host = InetAddress.getByName(fh[1]);
+                host = InetAddress.getByName(fh[1].substring(0,fh[1].indexOf(".")));
                 System.out.println("the host i want to download from is " + host.getHostName());
             } catch (UnknownHostException e) {
                 e.printStackTrace();
