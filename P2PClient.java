@@ -132,7 +132,7 @@ public class P2PClient {
                     }
                     inMsg = readMessage();
                     printAck(inMsg);
-                    //startDownload(msg,inMsg);
+                    startDownload(msg,inMsg);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
