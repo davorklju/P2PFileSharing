@@ -112,7 +112,6 @@ public class P2PClient {
                         inMsg = readMessage();
                         printAck(inMsg);
                         msg += "RATE ";
-                        inMsg = readMessage();
                         msg += getFileRating();
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -121,6 +120,7 @@ public class P2PClient {
                 case 4:
                     running = false;
                     break;
+                default:System.out.println("select a correct input"); continue;
             }
             if (running)
                 try {
@@ -132,7 +132,7 @@ public class P2PClient {
                     }
                     inMsg = readMessage();
                     printAck(inMsg);
-                    startDownload(msg,inMsg);
+                    //startDownload(msg,inMsg);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
