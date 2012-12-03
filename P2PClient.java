@@ -206,32 +206,15 @@ public class P2PClient {
         private void mkMessage(String file, OutputStream outputStream) {
             System.out.println(path + file);
             File f = new File(path + file);
-            /*
-            DataInputStream in = new DataInputStream(new FileInputStream(f));
 
-            int inData;
-            while((inData = in.read()) != -1)
-                out.write(inData);
-
-            out.write(-1);
-            */
-
-            FileInputStream fis;
-            OutputStream out;
-
+            DataOutputStream out = new DataOutputStream(outputStream);
+            FileInputStream in;
             try {
-                byte[] data = new byte[1024];
-                fis = new FileInputStream(f);
-                out = outputStream;
-                int count;
-                while ((count = fis.read(data)) >= 0) {
-                    out.write(data, 0, count);
-                }
-                out.flush();
-                fis.close();
+                in = new FileInputStream(f);
+                int data;
+                while((data = in.read()) != -1)
+                    out.write(data);
                 out.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -240,24 +223,23 @@ public class P2PClient {
         @Override
         public void run() {
             while (P2PClient.this.running) {
-                Socket tmp;
+                Socket tmp = null;
                 DataOutputStream out = null;
                 BufferedReader in = null;
                 try {
                     tmp = serverSocket.accept();
 
                     in = new BufferedReader(new InputStreamReader(tmp.getInputStream()));
-                    out = new DataOutputStream(tmp.getOutputStream());
 
                     String file = in.readLine().split(" ")[1];
-                    mkMessage(file, tmp.getOutputStream());
-                    tmp.close();
 
+                    mkMessage(file, tmp.getOutputStream());
+
+                    tmp.close();
                     System.out.println("finished writing");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
             }
         }
     }
@@ -292,9 +274,8 @@ public class P2PClient {
 
                 out.writeBytes("GET " + file + " 0\n");
                 out.flush();
-                String input = in.readLine();
 
-                mkFile(input, socket.getInputStream());
+                mkFile(socket.getInputStream());
 
                 System.out.println("finished reading");
 
@@ -305,41 +286,37 @@ public class P2PClient {
             }
         }
 
-        public void mkFile(String msg, InputStream inputStream) {
-            String[] message = msg.split("\n");
-            String[] stat = message[0].split(" ");
-            InputStream in = null;
-            FileOutputStream out = null;
-            byte[] data = new byte[1024];
-            File f = new File("/home/davor/Desktop/P2PFiles/thor.jpg");
+        public void mkFile(InputStream inputStream) {
 
-            try {
-
-                if (!f.exists()) {
+            File f = new File("/home/davor/Desktop/P2PFiles/"+file);
+            if(!f.exists())
+                try {
                     f.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
 
-                in = inputStream;
+            DataInputStream in = new DataInputStream(inputStream);
+            FileOutputStream out;
+            try {
                 out = new FileOutputStream(f);
-                int count;
-                while ((count = in.read(data)) >= 0) {
+                int data;
+                while((data = in.read()) != -1)
                     out.write(data);
-                }
-
-                in.close();
-                out.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
             /*
-            int inData;
-            while((inData = in.read()) != -1){
-                System.out.println(inData);
-                out.write(inData);
+            BufferedImage img;
+            try {
+                img = ImageIO.read(ImageIO.createImageInputStream(inputStream));
+                ImageIO.write(img,"JPG",f);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            System.out.println("stat = " + stat[1]);
             */
         }
     }
